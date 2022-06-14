@@ -350,9 +350,9 @@ hist_grid_plot(data_NAUnsure, shift=14, order_stat=-med_impact,
                y_points=c(0.00, 0.40, 0.8), 
                y_labs=c(0, 40, 80),
                ylim=c(0, 0.8),
-               xlim=c(0.8, 3.5),
-               x_ticks=c(0, 1, 2, 3), 
-               x_labs=c(0, 1, 2, 3), 
+               xlim=c(-0.5, 3.5),
+               x_ticks=c(-1, 0, 1, 2, 3), 
+               x_labs=c(-1, 0, 1, 2, 3), 
                titles,
                breaks=seq(from=-0.5, to=3.5, by=1))
 
