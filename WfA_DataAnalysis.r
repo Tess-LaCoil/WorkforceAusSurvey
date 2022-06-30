@@ -76,14 +76,20 @@ for(i in 1:nrow(data)){
   
   #Is there at least one 2 or 3?
   data$AtLeastOne2or3[i] <-  data$Count2and3s[i] >= 1
+  
+  #Is there at least one 2 or 3 for statements 3, 8, 10? (Navigating online system)
+  data$AtLeastOne2or3_OnlineSystem[i] <- sum(data[i, c(17,22,24)] >=2) >=1
+  
+  #Is there at least one 2 or 3 for statements 6, 7, 11, 12? (Points and payments)
+  data$AtLeastOne2or3_PointsPayments[i] <- sum(data[i, c(20,21,25,26)] >=2) >=1
 }
 
 #These lines convert the data for Q4 into a long format
 transpose_data <- data.frame(t(data[,15:26]))
 transpose_data$Question <- as.factor(c(1:12))
 data_long <- pivot_longer(transpose_data, 
-                              cols=starts_with("X"), 
-                              names_to="response")
+                          cols=starts_with("X"), 
+                          names_to="response")
 
 #Dataset with unsure in Q4 excluded by replacing them with NA.
 data_NAUnsure <- data
@@ -113,14 +119,6 @@ corr_results <- data.frame(Estimate = corr_vals,
 
 
 #~~~~~~~~~~~~~~~~~~~~ Headline Statistics ~~~~~~~~~~~~~~~~~~~~#
-#Functions
-prop_ci <- function(p, n, alpha){
-  CI <- c()
-  CI[1] <- p - qnorm((1-alpha/2), 0, 1)*sqrt(p*(1-p)/n)
-  CI[2] <- p + qnorm((1-alpha/2), 0, 1)*sqrt(p*(1-p)/n)
-  return(CI)
-}
-
 #Sample stats
 n_obs_raw <- nrow(data_raw)
 n_obs <- nrow(data)
@@ -141,9 +139,9 @@ mean_rank_placement <- mean_ranks[c(5, 8)]
 mean_rank_online_system <- mean_ranks[c(3, 9, 10)]
 #Overall means for each group of statements
 group_mean_ranks <- c(point_system = mean(mean_rank_points_system),
-                 online_system = mean(mean_rank_online_system),
-                 government_trust = mean(mean_rank_government_trust),
-                 placement = mean(mean_rank_placement))
+                      online_system = mean(mean_rank_online_system),
+                      government_trust = mean(mean_rank_government_trust),
+                      placement = mean(mean_rank_placement))
 
 #Summary statistics for Question 4
 percent_filled <- n_obs/n_obs_raw * 100
@@ -153,6 +151,8 @@ percent_at_least_one_0 <- sum(data$AtLeastOne0)/n_obs * 100
 percent_at_least_one_3 <- sum(data$AtLeastOne3)/n_obs * 100
 percent_at_least_one_0_or_1 <- sum(data$AtLeastOne0or1)/n_obs * 100
 percent_at_least_one_2_or_3 <- sum(data$AtLeastOne2or3)/n_obs * 100
+percent_at_least_one_2_or_3_OnlineSystem <- sum(data$AtLeastOne2or3_OnlineSystem)/n_obs * 100
+percent_at_least_one_2_or_3_PointsPayments <- sum(data$AtLeastOne2or3_PointsPayments)/n_obs * 100
 mean_number_unsure <- mean(data$CountUnsures)
 mean_number_3s <- mean(data$Count3s)
 median_number_3s <- median(data$Count3s)
@@ -161,14 +161,6 @@ median_number_2_and_3s <- median(data$Count2and3s)
 mean_impact <- colMeans(data_NAUnsure[,15:26], na.rm=TRUE)
 med_impact <- apply(data_NAUnsure[,15:26],2,median, na.rm=TRUE)
 automation_fears_23_percent <- (length(which(data$Q4.2 >= 2))/n_obs) * 100
-lack_of_communication_23_percent <- (length(which(data$Q4.4 >= 2))/n_obs) * 100
-digital_support_lacking_23_percent <- (length(which(data$Q4.10 >= 2))/n_obs) * 100
-previous_activities_23_percent <- (length(which(data$Q4.6 >= 2))/n_obs) * 100
-target_fairness_23_percent <- (length(which(data$Q4.7 >= 2))/n_obs) * 100 
-
-#CIs
-prop_ci(percent_at_least_one_0/100, n_obs, 0.05)
-prop_ci(percent_Q2[5]/100, n_obs, 0.05)
 
 #Determine the number and percentage of responses which are Unsure
 unsure_count <- c()
@@ -176,27 +168,40 @@ for(i in 1:12){
   unsure_count[i] <- sum(is.na(data_NAUnsure[,i+14])) 
 }
 unsure_percent <- round((unsure_count/n_obs) * 100, digits=2)
-  
-  
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~ Tables ~~~~~~~~~~~~~~~~~~~~~~~~~~#
-#Marginal distribution tables
+#Marginal distribution tables for Q3
 marginals <- matrix(nrow=12, ncol=13)
 # i: index of question
 # j: index of rank
 # Column 13 is the total for 1:12 in the row to check table orientation
 for(i in 1:12){
   for(j in 1:12){
-    marginals[i,j]=length(which(data[,i+2]==j))
+    marginals[i,j] = length(which(data[,i+2]==j))
   }
   marginals[i,13] = sum(marginals[i,1:12])
 }
 #Table with percentages
 marginal_percent <- round((marginals/marginals[1,13]) * 100, digits=1) 
 
+#Frequencies for Q4
+Q4_freq <- data.frame()
+for(i in 1:12){
+  for(j in -1:3){
+    Q4_freq[i,j+2] <- length(which(data[,i+14]==j))
+  }
+}
+colnames(Q4_freq) <- c("Unsure", "None", "Trivial", "Some", "Severe")
+Q4_Percent <- round((Q4_freq/n_obs)*100, digits = 2) #Percentage of responses
+
+write.csv(Q4_freq, file="Q4_Response_Counts.csv")
+write.csv(Q4_Percent, file="Q4_Response_Percentages.csv")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plots ~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #Parameters
 default_breaks <- seq(from=-0.5, to=12.5, by=1)
+
 
 #Functions
 #Plot nice histogram
@@ -298,8 +303,8 @@ plot_stacked_bar_chart(data_long,
                        xlabs=colnames(data[,15:26]))
 
 #Points and payments
-points_data <- data_long %>% filter(Question %in% c(6, 7, 10, 11))
-xlabs <- xlabs_strings[c(6, 7, 10, 11)]
+points_data <- data_long %>% filter(Question %in% c(6, 7, 11, 12))
+xlabs <- xlabs_strings[c(6, 7, 11, 12)]
 plot_stacked_bar_chart(points_data, 
                        title="Percentage Responses for Points and Payments", 
                        xlabs=xlabs, xlab="")
@@ -350,9 +355,9 @@ hist_grid_plot(data_NAUnsure, shift=14, order_stat=-med_impact,
                y_points=c(0.00, 0.40, 0.8), 
                y_labs=c(0, 40, 80),
                ylim=c(0, 0.8),
-               xlim=c(-0.5, 3.5),
-               x_ticks=c(-1, 0, 1, 2, 3), 
-               x_labs=c(-1, 0, 1, 2, 3), 
+               xlim=c(0.8, 3.5),
+               x_ticks=c(0, 1, 2, 3), 
+               x_labs=c(0, 1, 2, 3), 
                titles,
                breaks=seq(from=-0.5, to=3.5, by=1))
 
